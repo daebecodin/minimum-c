@@ -34,7 +34,7 @@ void *no_free_malloc(size_t size)
  */
 typedef struct block_header *block_header; // linked-list type
 struct block_header {
- size_t size;
- block_header *next;
- int free_flag;
+ size_t size; // block size in bytes
+ block_header *next; // linked-list link to next block
+ int is_free; // free-state flag
 };
