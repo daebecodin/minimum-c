@@ -21,3 +21,20 @@ void *no_free_malloc(size_t size)
   return NULL;
  }
 }
+
+/*
+ *  Memory Chuck Metadata
+ *
+ *  Placed at the beginning of each chunk
+ *  - ptr to next chunk
+ *  - size of the chunk
+ *  - int flag of freeness; 0 or 1
+ *
+ *  12 byte struct
+ */
+typedef struct block_header *block_header; // linked-list type
+struct block_header {
+ size_t size;
+ block_header *next;
+ int free_flag;
+};
