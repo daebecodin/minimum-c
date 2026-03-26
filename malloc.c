@@ -37,10 +37,11 @@ struct block_header {
  size_t size; // block size in bytes
  block_header *next; // linked-list link to next block
  int is_free; // free-state flag
+ char data[1]; // indicate end of meta-data
 };
 
 /*
- * First Fit Malloc
+ * Finding a suitable chunk
  *
  * Traverses through the list of memory chunks until we find a free block w/enough space for the requested allocation
  *
@@ -62,8 +63,47 @@ block_header *find_free_block(block_header **last, size_t size)
   *last = current;
   current = current->next;
  }
- return current; // if so the return the address
+ return current; // if so then return the address
 };
+
+/*
+ * Extending the heap memory
+ *
+ * If we cant find a suitable unused chunk
+ * We move the break and initialize the block at the end of the linked list
+ */
+
+// size of a header block
+#define BLOCK_SIZE 12
+block_header *place_block_end(block_header *last, size_t size)
+{
+ block_header *block = sbrk(0); // requesting space
+ void *block_request = sbrk(size + BLOCK_SIZE);
+
+ // if sbrk fails
+ if (block_request == (void*)-1) {
+  return NULL;
+ }
+ if (last) {
+  last -> next = block; // place block next to the known last
+ }
+ block -> size = size; // requested space
+ block -> next = NULL; // place at end
+ block -> is_free = 0; // free status
+ return block;
+}
+
+/*
+ * Splitting a Block
+ * - We have left over memory in a free chunk that's larger than needed
+ * - the requested size for the nre chunk is takes from the free chunk
+ * - we are left with a smaller free chunk after the operation
+ */
+void *split_free_block(block_header allocated_block, size_t size)
+{
+ block_header *new_block = allocated_block -> data + size; // place its header after the end of the allocated block
+}
+
 
 
 
