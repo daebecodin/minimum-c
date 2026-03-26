@@ -173,8 +173,34 @@ void *malloc(size_t size)
    }
     // base points to the first block
     base = request;
-   return request -> data;
  }
+   return request -> data;
+}
+
+/*
+ * Calloc
+ * Arguments
+ *   - byte_count: number of elements
+ *   - size: size  of each element in bytes
+ * Behavior
+ *   - allocate byte_count * size
+ *   - initializes every allocated byte to 0
+ *   - returns NULL if allocation fails
+ */
+void *calloc(size_t byte_count, size_t size)
+{
+ void *new = malloc(byte_count * size); // allocate total byte_count * size
+ size_t i;
+
+ if (new) {
+  unsigned char *p = new; // byte-wise view of allocated memory
+  // loop through addresses
+  size_t count = byte_count * size;
+  for (i = 0; i < count ; i ++) {
+   p[i] = 0; // initialize each byte to 0
+  }
+ }
+ return new; // return head of allocated block
 }
 
 
