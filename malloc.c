@@ -3,6 +3,15 @@
 */
 #include <sys/types.h>
 #include  <unistd.h>
+#include <stddef.h>
+
+/*
+ * 8-byte alignment helper
+ */
+static size_t align8(size_t size)
+{
+ return (size + 7) & ~(size_t)7;
+}
 
 /*
  *  Simple malloc to allocate space when needed
@@ -35,8 +44,8 @@ void *no_free_malloc(size_t size)
 typedef struct block_header block_header; // linked-list type
 struct block_header {
  size_t size; // block size in bytes
- block_header *next; // linked-list link to next block
  int is_free; // free-state flag
+ block_header *next; // linked-list link to next block
  char data[1]; // indicate end of meta-data
 };
 
@@ -60,8 +69,8 @@ block_header *find_free_block(block_header **last, size_t size)
 
  // for each block check if it's free and if its size is at least the requested size
  while (current && !(current->is_free && current->size >= size)) { // if not, remember it as the previous block and move to next
-  *last = current;
-  current = current->next;
+  *last = current; // give last a copy of current
+  current = current->next; // give current a copy of its linked chunk
  }
  return current; // if so then return the address
 };
@@ -73,23 +82,24 @@ block_header *find_free_block(block_header **last, size_t size)
  * We move the break and initialize the block at the end of the linked list
  */
 
-// size of a header block
-#define BLOCK_SIZE 12
-block_header *place_block_end(block_header *last, size_t size)
+// size is # of bytes before the payload starts
+#define BLOCK_SIZE offsetof(block_header, data)
+block_header *extend_heap(block_header *last, size_t size)
 {
  block_header *block = sbrk(0); // requesting space
- void *block_request = sbrk(size + BLOCK_SIZE);
+ void *block_request = sbrk(size + BLOCK_SIZE); // requested size + header
 
  // if sbrk fails
  if (block_request == (void*)-1) {
   return NULL;
  }
  if (last) {
-  last -> next = block; // place block next to the known last
+  last -> next = block; // link the current end to the block at the end of the heap
  }
+ // initialize the block
  block -> size = size; // requested space
  block -> next = NULL; // place at end
- block -> is_free = 0; // free status
+ block -> is_free = 0; // the block is no longer free
  return block;
 }
 
@@ -109,6 +119,62 @@ void split_free_block(block_header *allocated_block, size_t size)
  new_payload -> is_free = 1; // marked free / available for allocation
  allocated_block -> size = size; // shrink the allocated chunk to the requested size
  allocated_block -> next = new_payload; // link the original block to the leftover free block
+}
+
+/*
+ * Malloc
+ * base starts at NULL meaning empty list
+ *
+ * If the base is NULL, this is the allocators first attempted block creation:
+ *   - extend the heap
+ *   - make the base point to the first block
+ * If it's not NULL:
+ *   - search the list for a suitable block
+ *   - if found then
+ *     - split the block only if its remainder is big enough,
+ *     - for a new header and aligned new payload
+ *     - mark it as used
+ *   - if no suitable chunk is found:
+ *     - extend the heap and append a new block to the list
+ */
+void *base = NULL;
+void *malloc(size_t size)
+{
+ block_header *request, *last_block;
+ size_t size_aligned = align8(size);
+
+ if (base) {
+
+  // start searching from the head of the block list
+  last_block = base;
+
+  // look for a free block of sufficient size for the request
+  request = find_free_block(&last_block, size_aligned);
+
+  // if a block is found
+   if (request) {
+    // split if the found block has leftover space to form a new block
+    if ((request -> size - size_aligned) >= BLOCK_SIZE + 8) {
+     split_free_block(request, size_aligned); //split
+    }
+    request -> is_free = 0; // no longer free
+   } else {
+    // if no fitting block is found, grow the heap
+    request = extend_heap(last_block, size_aligned);
+    if (!(request)) { // if extension fails
+        return NULL;
+    }
+   }
+ } else {
+   // empty list -> first block allocation
+   request = extend_heap(NULL, size_aligned);
+   if (!request) {
+     return NULL;
+   }
+    // base points to the first block
+    base = request;
+   return request -> data;
+ }
 }
 
 
