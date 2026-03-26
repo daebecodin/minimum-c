@@ -99,9 +99,16 @@ block_header *place_block_end(block_header *last, size_t size)
  * - the requested size for the nre chunk is takes from the free chunk
  * - we are left with a smaller free chunk after the operation
  */
-void *split_free_block(block_header allocated_block, size_t size)
+void split_free_block(block_header *allocated_block, size_t size)
 {
- block_header *new_block = allocated_block -> data + size; // place its header after the end of the allocated block
+ // place address of first byte of free chunk header after the allocated chunk
+ block_header *new_payload = (block_header*)(allocated_block -> data + size);
+
+ new_payload -> size = allocated_block -> size - size - BLOCK_SIZE; // old payload - requested size - new block header
+ new_payload -> next = allocated_block -> next; // new block links to the chunk that previously the allocated chunk
+ new_payload -> is_free = 1; // marked free / available for allocation
+ allocated_block -> size = size; // shrink the allocated chunk to the requested size
+ allocated_block -> next = new_payload; // link the original block to the leftover free block
 }
 
 
