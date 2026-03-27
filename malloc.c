@@ -60,10 +60,11 @@ struct block_header {
 
 /* Validating a block
  * Arguments
- *   - a pointer to the data field of a memory chunk
+ *   - a pointer to the payload of an allocated block
  * Behavior
- *   - given a payload pointer, compute its header address
- *   - get a memory block from the given address
+ *   - given a payload pointer
+ *   - compute backwards by bytes
+ *   - return its header address
  */
 block_header *find_header(void *p)
 {
@@ -75,12 +76,13 @@ block_header *find_header(void *p)
 /*
  * Valid address for free function
  * Arguments
- *   - a pointer to a block header
+ *   - a pointer to an allocated payload
  * Behavior
- *   - start at the beginning of the heap
+ *   - start at an initialized allocator
  *   - if the given pointer is between the start at the current heap break
- *   - validate the pointer
- *   - if not, failed validation
+ *   - compute the block header from p
+ *   - confirm the headers stored payload matches p
+ *   - return 1 if valid, otherwise 0
  */
 int validate_address(void *p)
 {
@@ -88,7 +90,7 @@ int validate_address(void *p)
  if (global_base) {
     if (p > global_base && p < sbrk(0)) {
      // return the pointer to a validated block
-     return p == (validate_block(p)) -> ptr;
+     return p == find_header(p) -> ptr;
     }
  }
  return 0; // failure
