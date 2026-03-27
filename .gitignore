@@ -56,3 +56,7 @@ dkms.conf
 
 # Build
 cmake-build-*/
+
+# Untracked reference files
+alignment_padding.c
+sizeof_operator.c
