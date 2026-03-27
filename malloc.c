@@ -45,7 +45,9 @@ typedef struct block_header block_header; // linked-list type
 struct block_header {
  size_t size; // block size in bytes
  int is_free; // free-state flag
- block_header *next; // linked-list link to next block
+ block_header *next; // link to next block
+ block_header *prev; // link to previous block
+ void *ptr; // test pointer
  char data[1]; // indicate end of meta-data
 };
 
@@ -202,6 +204,32 @@ void *calloc(size_t byte_count, size_t size)
  }
  return new; // return head of allocated block
 }
+
+/*
+ * Fusion
+ * Arguments
+ *    - block: free block to be merged  with neighbors
+ * Behavior
+ *    - check if the next block exists and is free
+ *    - merge the next free block into the current block
+ *    - relink the merged block to the successor of the old next block
+ */
+block_header *fusion(block_header *block)
+{
+ // if the next block exist and is free, merge it into current block
+ if (block -> next && block -> next -> is_free) {
+  block -> size += BLOCK_SIZE + block -> next -> size; // grow current block by header + next payload
+  block -> next = block -> next -> next; // unlink the absorbed block
+
+  // if the successor exist, reconnect it's previous to the absorbed block
+  if (block -> next) {
+   block -> next -> prev = block;
+  }
+ }
+ return block;
+}
+
+
 
 
 
