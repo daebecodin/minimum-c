@@ -251,13 +251,13 @@ void *calloc(size_t byte_count, size_t size)
 /*
  * Fusion
  * Arguments
- *    - block: free block to be merged  with neighbors
+ *    - block: free block to be merged with neighbors
  * Behavior
  *    - check if the next block exists and is free
  *    - merge the next free block into the current block
  *    - relink the merged block to the successor of the old next block
  */
-block_header *fusion(block_header *block)
+block_header *merge_blocks(block_header *block)
 {
  // if the next block exist and is free, merge it into current block
  if (block -> next && block -> next -> is_free) {
@@ -272,6 +272,48 @@ block_header *fusion(block_header *block)
  return block;
 }
 
+/*
+ * Free
+ * Arguments
+ *   - pointer to an allocated payload
+ * Behavior
+ *   - check if the given pointer is valid
+ *   - get the block header address
+ *    - mark the block as free
+ *   - if the previous block exist and is free, merge with it
+ *   - if the resulting block is the last block then we remove from the heap
+ *   - if the resulting block is the only block then we rest base to NULL
+ */
+void free(void *p) {
+ // find the block
+ block_header *b;
+
+ // validate the pointer
+ if (validate_address(p)) {
+  b = find_header(p);
+  b -> is_free = 1; // mark it as free
+
+  // if the block's predecessor exists and is marked free
+  if (b -> prev && b -> prev -> is_free) {
+   // merge with prev
+   b = merge_blocks(b -> prev);
+
+   // merge with next
+   if (b -> next) {
+    merge_blocks(b);
+   } else {
+    // resulting block after merge
+    if (b -> prev) {
+     b -> prev -> next = NULL; // this block is the last block in the list so we remove it
+    } else {
+     // reset base to null
+     global_base = NULL; // no blocks remain
+    }
+    brk(b); // move the program break to the start this of block
+   }
+  }
+ }
+}
 
 
 
