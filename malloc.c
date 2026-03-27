@@ -315,6 +315,33 @@ void free(void *p) {
  }
 }
 
+/* Copy Block
+ * Arguments
+ *   - source: source block header
+ *   - destination: destination block header
+ * Behavior
+ *   - store typed pointers to the blocks payloads
+ *   - iterate through the block is byte-sized units
+ *   - copy data from source payload to the destination payload
+ *   - stop when either block's payload limit is reached
+ */
+void copy_block(block_header *source, block_header *destination) {
+ // pointers to payload region of each block
+ unsigned char *sdata, *ddata;
+ size_t step;
+
+ // pointers for allocated block payloads
+ sdata = source -> ptr;
+ ddata = destination -> ptr;
+
+ // copy up to the source's byte capacity if destination's is larger
+ // copy up to the destination's byte capacity if the source's is larger
+ size_t limit = source -> size < destination -> size ? source -> size : destination -> size;
+ for (step = 0; step < limit; ++step) {
+       ddata[step] = sdata[step];
+ }
+}
+
 
 
 
