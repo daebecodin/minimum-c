@@ -5,6 +5,12 @@
 #include  <unistd.h>
 #include <stddef.h>
 
+
+
+void *global_base = NULL; // signaling we haven't set up yet
+
+// size is # of bytes before the payload starts
+#define BLOCK_SIZE offsetof(block_header, data)
 /*
  * 8-byte alignment helper
  */
@@ -29,6 +35,7 @@ void *no_free_malloc(size_t size)
  if (size_request == (void*)-1) {
   return NULL;
  }
+ return current_break;
 }
 
 /*
@@ -51,6 +58,42 @@ struct block_header {
  char data[1]; // indicate end of meta-data
 };
 
+/* Validating a block
+ * Arguments
+ *   - a pointer to the data field of a memory chunk
+ * Behavior
+ *   - given a payload pointer, compute its header address
+ *   - get a memory block from the given address
+ */
+block_header *find_header(void *p)
+{
+ char *temp; // create temp pointer
+ temp = p; // give it a copy
+ return (block_header *) ((char *) temp - BLOCK_SIZE); // compute back to the block header
+}
+
+/*
+ * Valid address for free function
+ * Arguments
+ *   - a pointer to a block header
+ * Behavior
+ *   - start at the beginning of the heap
+ *   - if the given pointer is between the start at the current heap break
+ *   - validate the pointer
+ *   - if not, failed validation
+ */
+int validate_address(void *p)
+{
+ // start at the beginning of the heap
+ if (global_base) {
+    if (p > global_base && p < sbrk(0)) {
+     // return the pointer to a validated block
+     return p == (validate_block(p)) -> ptr;
+    }
+ }
+ return 0; // failure
+}
+
 /*
  * Finding a suitable chunk
  *
@@ -64,7 +107,6 @@ struct block_header {
  * - The function return a fitting chunk, or NULL if none were found
  */
 
-void *global_base = NULL; // signaling we haven't set up yet
 block_header *find_free_block(block_header **last, size_t size)
 {
  block_header *current = global_base; // start at first block header
@@ -84,8 +126,7 @@ block_header *find_free_block(block_header **last, size_t size)
  * We move the break and initialize the block at the end of the linked list
  */
 
-// size is # of bytes before the payload starts
-#define BLOCK_SIZE offsetof(block_header, data)
+
 block_header *extend_heap(block_header *last, size_t size)
 {
  block_header *block = sbrk(0); // requesting space
@@ -228,6 +269,8 @@ block_header *fusion(block_header *block)
  }
  return block;
 }
+
+
 
 
 
