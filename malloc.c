@@ -11,6 +11,7 @@ void *global_base = NULL; // signaling we haven't set up yet
 
 // size is # of bytes before the payload starts
 #define BLOCK_SIZE offsetof(block_header, data)
+
 /*
  * 8-byte alignment helper
  */
@@ -20,8 +21,12 @@ static size_t align8(size_t size)
 }
 
 /*
- *  Simple malloc to allocate space when needed
- *  unable to use free() and realloc()
+ * Purpose
+ *   - simple malloc to allocate space when needed
+ * Pre-Truth
+ *   - need a heap storage
+ * Post-Guarantee
+ *   - allocated chunk if specified size
  */
 void *no_free_malloc(size_t size)
 {
@@ -42,11 +47,12 @@ void *no_free_malloc(size_t size)
  *  Memory Chuck Metadata
  *
  *  Placed at the beginning of each chunk
- *  - ptr to next chunk
  *  - size of the chunk
  *  - int flag of freeness; 0 or 1
- *
- *  12 byte struct
+ *  - ptr to next chunk
+ *  - ptr to prev chunk
+ *  - ownership verification pointer
+ *  - payload start marker
  */
 typedef struct block_header block_header; // linked-list type
 struct block_header {
@@ -58,7 +64,7 @@ struct block_header {
  char data[1]; // indicate end of meta-data
 };
 
-/* Validating a block
+/* Finding a header
  * Arguments
  *   - a pointer to the payload of an allocated block
  * Behavior
